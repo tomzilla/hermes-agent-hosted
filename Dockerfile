@@ -53,4 +53,20 @@ RUN uv venv && \
 ENV HERMES_WEB_DIST=/opt/hermes/hermes_cli/web_dist
 ENV HERMES_HOME=/opt/data
 VOLUME [ "/opt/data" ]
+
+# Slack Webhook Platform Environment Variables
+# These can be overridden at runtime via docker run -e
+ENV ORG_ID=
+ENV TENANT_ID=
+ENV USER_ID=
+ENV CHANNEL_ID=
+ENV SLACK_BOT_TOKEN=
+ENV SLACK_SIGNING_SECRET=
+ENV SLACK_ALLOWED_USERS=
+ENV STATE_DIR=/var/lib/hermes/state
+
+# Default to Slack webhook platform only
+ENV SLACK_WEBHOOK_ENABLED=true
+ENV HERMES_GATEWAY_BUSY_INPUT_MODE=hidden
+
 ENTRYPOINT [ "/opt/hermes/docker/entrypoint.sh" ]
