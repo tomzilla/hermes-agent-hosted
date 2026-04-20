@@ -8,9 +8,10 @@
 model:
   # Default model to use (can be overridden with --model flag)
   # Both "default" and "model" work as the key name here.
-  default: "anthropic/claude-opus-4.6"
-  
+  default: "qwen3.6-plus"
+
   # Inference provider selection:
+  #   "custom"       - Any OpenAI-compatible endpoint. Set base_url below.
   #   "auto"         - Auto-detect from credentials (default)
   #   "openrouter"   - OpenRouter (requires: OPENROUTER_API_KEY or OPENAI_API_KEY)
   #   "nous"         - Nous Portal OAuth (requires: hermes login)
@@ -32,7 +33,6 @@ model:
   #   "ai-gateway"   - Vercel AI Gateway (requires: AI_GATEWAY_API_KEY)
   #
   # Local servers (LM Studio, Ollama, vLLM, llama.cpp):
-  #   "custom"       - Any OpenAI-compatible endpoint. Set base_url below.
   #   Aliases: "lmstudio", "ollama", "vllm", "llamacpp" all map to "custom".
   #   Example for LM Studio:
   #     provider: "lmstudio"
@@ -40,11 +40,13 @@ model:
   #   No API key needed — local servers typically ignore auth.
   #
   # Can also be overridden with --provider flag or HERMES_INFERENCE_PROVIDER env var.
-  provider: "auto"
-  
-  # API configuration (falls back to OPENROUTER_API_KEY env var)
+  provider: "custom"
+
+  # API configuration (falls back to ANTHROPIC_API_KEY env var for custom provider)
   # api_key: "your-key-here"  # Uncomment to set here instead of .env
-  base_url: "https://openrouter.ai/api/v1"
+  base_url: "https://coding-intl.dashscope.aliyuncs.com/v1"
+  # API mode for custom provider: "chat_completions" (OpenAI-compatible) or "anthropic"
+  api_mode: "chat_completions"
 
   # ── Token limits — two settings, easy to confuse ──────────────────────────
   #
