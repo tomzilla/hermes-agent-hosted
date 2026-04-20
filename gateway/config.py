@@ -52,6 +52,7 @@ class Platform(Enum):
     DISCORD = "discord"
     WHATSAPP = "whatsapp"
     SLACK = "slack"
+    SLACK_WEBHOOK = "slack_webhook"
     SIGNAL = "signal"
     MATTERMOST = "mattermost"
     MATRIX = "matrix"
@@ -780,6 +781,7 @@ def _validate_gateway_config(config: "GatewayConfig") -> None:
         Platform.TELEGRAM: "TELEGRAM_BOT_TOKEN",
         Platform.DISCORD: "DISCORD_BOT_TOKEN",
         Platform.SLACK: "SLACK_BOT_TOKEN",
+        Platform.SLACK_WEBHOOK: "SLACK_BOT_TOKEN",
         Platform.MATTERMOST: "MATTERMOST_TOKEN",
         Platform.MATRIX: "MATRIX_ACCESS_TOKEN",
         Platform.WEIXIN: "WEIXIN_TOKEN",

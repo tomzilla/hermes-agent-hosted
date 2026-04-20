@@ -2642,8 +2642,8 @@ class GatewayRunner:
         await self._shutdown_event.wait()
     
     def _create_adapter(
-        self, 
-        platform: Platform, 
+        self,
+        platform: Platform,
         config: Any
     ) -> Optional[BasePlatformAdapter]:
         """Create the appropriate adapter for a platform."""
@@ -2657,129 +2657,162 @@ class GatewayRunner:
                 getattr(self.config, "thread_sessions_per_user", False),
             )
 
-        if platform == Platform.TELEGRAM:
-            from gateway.platforms.telegram import TelegramAdapter, check_telegram_requirements
-            if not check_telegram_requirements():
-                logger.warning("Telegram: python-telegram-bot not installed")
+        # Slack Webhook is the only enabled platform
+        if platform == Platform.SLACK_WEBHOOK:
+            from gateway.platforms.slack_webhook import SlackWebhookAdapter, check_slack_webhook_requirements
+            if not check_slack_webhook_requirements():
+                logger.warning("Slack Webhook: aiohttp or httpx not installed. Run: pip install aiohttp httpx")
                 return None
-            return TelegramAdapter(config)
-        
-        elif platform == Platform.DISCORD:
-            from gateway.platforms.discord import DiscordAdapter, check_discord_requirements
-            if not check_discord_requirements():
-                logger.warning("Discord: discord.py not installed")
-                return None
-            return DiscordAdapter(config)
-        
-        elif platform == Platform.WHATSAPP:
-            from gateway.platforms.whatsapp import WhatsAppAdapter, check_whatsapp_requirements
-            if not check_whatsapp_requirements():
-                logger.warning("WhatsApp: Node.js not installed or bridge not configured")
-                return None
-            return WhatsAppAdapter(config)
-        
-        elif platform == Platform.SLACK:
-            from gateway.platforms.slack import SlackAdapter, check_slack_requirements
-            if not check_slack_requirements():
-                logger.warning("Slack: slack-bolt not installed. Run: pip install 'hermes-agent[slack]'")
-                return None
-            return SlackAdapter(config)
+            return SlackWebhookAdapter(config)
 
-        elif platform == Platform.SIGNAL:
-            from gateway.platforms.signal import SignalAdapter, check_signal_requirements
-            if not check_signal_requirements():
-                logger.warning("Signal: SIGNAL_HTTP_URL or SIGNAL_ACCOUNT not configured")
-                return None
-            return SignalAdapter(config)
+        # All other platforms are disabled
+        # if platform == Platform.TELEGRAM:
+        #     from gateway.platforms.telegram import TelegramAdapter, check_telegram_requirements
+        #     if not check_telegram_requirements():
+        #         logger.warning("Telegram: python-telegram-bot not installed")
+        #         return None
+        #     return TelegramAdapter(config)
+        #
+        # elif platform == Platform.DISCORD:
+        #     from gateway.platforms.discord import DiscordAdapter, check_discord_requirements
+        #     if not check_discord_requirements():
+        #         logger.warning("Discord: discord.py not installed")
+        #         return None
+        #     return DiscordAdapter(config)
+        #
+        # elif platform == Platform.WHATSAPP:
+        #     from gateway.platforms.whatsapp import WhatsAppAdapter, check_whatsapp_requirements
+        #     if not check_whatsapp_requirements():
+        #         logger.warning("WhatsApp: Node.js not installed or bridge not configured")
+        #         return None
+        #     return WhatsAppAdapter(config)
+        #
+        # elif platform == Platform.SLACK:
+        #     from gateway.platforms.slack import SlackAdapter, check_slack_requirements
+        #     if not check_slack_requirements():
+        #         logger.warning("Slack: slack-bolt not installed. Run: pip install 'hermes-agent[slack]'")
+        #         return None
+        #     return SlackAdapter(config)
+        #
+        # elif platform == Platform.SLACK_WEBHOOK:
+        #     from gateway.platforms.slack_webhook import SlackWebhookAdapter, check_slack_webhook_requirements
+        #     if not check_slack_webhook_requirements():
+        #         logger.warning("Slack Webhook: aiohttp or httpx not installed. Run: pip install aiohttp httpx")
+        #         return None
+        #     return SlackWebhookAdapter(config)
+        #
+        # elif platform == Platform.SIGNAL:
+        #     from gateway.platforms.signal import SignalAdapter, check_signal_requirements
+        #     if not check_signal_requirements():
+        #         logger.warning("Signal: SIGNAL_HTTP_URL or SIGNAL_ACCOUNT not configured")
+        #         return None
+        #     return SignalAdapter(config)
+        #
+        # elif platform == Platform.HOMEASSISTANT:
+        #     from gateway.platforms.homeassistant import HomeAssistantAdapter, check_ha_requirements
+        #     if not check_ha_requirements():
+        #         logger.warning("HomeAssistant: aiohttp not installed or HASS_TOKEN not set")
+        #         return None
+        #     return HomeAssistantAdapter(config)
+        #
+        # elif platform == Platform.EMAIL:
+        #     from gateway.platforms.email import EmailAdapter, check_email_requirements
+        #     if not check_email_requirements():
+        #         logger.warning("Email: EMAIL_ADDRESS, EMAIL_PASSWORD, EMAIL_IMAP_HOST, or EMAIL_SMTP_HOST not set")
+        #         return None
+        #     return EmailAdapter(config)
+        #
+        # elif platform == Platform.SMS:
+        #     from gateway.platforms.sms import SmsAdapter, check_sms_requirements
+        #     if not check_sms_requirements():
+        #         logger.warning("SMS: aiohttp not installed or TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN not set")
+        #         return None
+        #     return SmsAdapter(config)
+        #
+        # elif platform == Platform.DINGTALK:
+        #     from gateway.platforms.dingtalk import DingTalkAdapter, check_dingtalk_requirements
+        #     if not check_dingtalk_requirements():
+        #         logger.warning("DingTalk: dingtalk-stream not installed or DINGTALK_CLIENT_ID/SECRET not set")
+        #         return None
+        #     return DingTalkAdapter(config)
+        #
+        # elif platform == Platform.FEISHU:
+        #     from gateway.platforms.feishu import FeishuAdapter, check_feishu_requirements
+        #     if not check_feishu_requirements():
+        #         logger.warning("Feishu: lark-oapi not installed or FEISHU_APP_ID/SECRET not set")
+        #         return None
+        #     return FeishuAdapter(config)
+        #
+        # elif platform == Platform.WECOM_CALLBACK:
+        #     from gateway.platforms.wecom_callback import (
+        #         WecomCallbackAdapter,
+        #         check_wecom_callback_requirements,
+        #     )
+        #     if not check_wecom_callback_requirements():
+        #         logger.warning("WeComCallback: aiohttp/httpx not installed")
+        #         return None
+        #     return WecomCallbackAdapter(config)
+        #
+        # elif platform == Platform.WECOM:
+        #     from gateway.platforms.wecom import WeComAdapter, check_wecom_requirements
+        #     if not check_wecom_requirements():
+        #         logger.warning("WeCom: aiohttp not installed or WECOM_BOT_ID/SECRET not set")
+        #         return None
+        #     return WeComAdapter(config)
+        #
+        # elif platform == Platform.WEIXIN:
+        #     from gateway.platforms.weixin import WeixinAdapter, check_weixin_requirements
+        #     if not check_weixin_requirements():
+        #         logger.warning("Weixin: aiohttp/cryptography not installed")
+        #         return None
+        #     return WeixinAdapter(config)
+        #
+        # elif platform == Platform.MATTERMOST:
+        #     from gateway.platforms.mattermost import MattermostAdapter, check_mattermost_requirements
+        #     if not check_mattermost_requirements():
+        #         logger.warning("Mattermost: MATTERMOST_TOKEN or MATTERMOST_URL not set, or aiohttp missing")
+        #         return None
+        #     return MattermostAdapter(config)
+        #
+        # elif platform == Platform.MATRIX:
+        #     from gateway.platforms.matrix import MatrixAdapter, check_matrix_requirements
+        #     if not check_matrix_requirements():
+        #         logger.warning("Matrix: mautrix not installed or credentials not set. Run: pip install 'mautrix[encryption]'")
+        #         return None
+        #     return MatrixAdapter(config)
+        #
+        # elif platform == Platform.API_SERVER:
+        #     from gateway.platforms.api_server import APIServerAdapter, check_api_server_requirements
+        #     if not check_api_server_requirements():
+        #         logger.warning("API Server: aiohttp not installed")
+        #         return None
+        #     return APIServerAdapter(config)
+        #
+        # elif platform == Platform.WEBHOOK:
+        #     from gateway.platforms.webhook import WebhookAdapter, check_webhook_requirements
+        #     if not check_webhook_requirements():
+        #         logger.warning("Webhook: aiohttp not installed")
+        #         return None
+        #     adapter = WebhookAdapter(config)
+        #     adapter.gateway_runner = self  # For cross-platform delivery
+        #     return adapter
+        #
+        # elif platform == Platform.BLUEBUBBLES:
+        #     from gateway.platforms.bluebubbles import BlueBubblesAdapter, check_bluebubbles_requirements
+        #     if not check_bluebubbles_requirements():
+        #         logger.warning("BlueBubbles: not installed or credentials not set")
+        #         return None
+        #     return BlueBubblesAdapter(config)
+        #
+        # elif platform == Platform.QQBOT:
+        #     from gateway.platforms.qqbot import QQAdapter, check_qq_requirements
+        #     if not check_qq_requirements():
+        #         logger.warning("QQBot: not installed or credentials not set")
+        #         return None
+        #     return QQAdapter(config)
 
-        elif platform == Platform.HOMEASSISTANT:
-            from gateway.platforms.homeassistant import HomeAssistantAdapter, check_ha_requirements
-            if not check_ha_requirements():
-                logger.warning("HomeAssistant: aiohttp not installed or HASS_TOKEN not set")
-                return None
-            return HomeAssistantAdapter(config)
-
-        elif platform == Platform.EMAIL:
-            from gateway.platforms.email import EmailAdapter, check_email_requirements
-            if not check_email_requirements():
-                logger.warning("Email: EMAIL_ADDRESS, EMAIL_PASSWORD, EMAIL_IMAP_HOST, or EMAIL_SMTP_HOST not set")
-                return None
-            return EmailAdapter(config)
-
-        elif platform == Platform.SMS:
-            from gateway.platforms.sms import SmsAdapter, check_sms_requirements
-            if not check_sms_requirements():
-                logger.warning("SMS: aiohttp not installed or TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN not set")
-                return None
-            return SmsAdapter(config)
-
-        elif platform == Platform.DINGTALK:
-            from gateway.platforms.dingtalk import DingTalkAdapter, check_dingtalk_requirements
-            if not check_dingtalk_requirements():
-                logger.warning("DingTalk: dingtalk-stream not installed or DINGTALK_CLIENT_ID/SECRET not set")
-                return None
-            return DingTalkAdapter(config)
-
-        elif platform == Platform.FEISHU:
-            from gateway.platforms.feishu import FeishuAdapter, check_feishu_requirements
-            if not check_feishu_requirements():
-                logger.warning("Feishu: lark-oapi not installed or FEISHU_APP_ID/SECRET not set")
-                return None
-            return FeishuAdapter(config)
-
-        elif platform == Platform.WECOM_CALLBACK:
-            from gateway.platforms.wecom_callback import (
-                WecomCallbackAdapter,
-                check_wecom_callback_requirements,
-            )
-            if not check_wecom_callback_requirements():
-                logger.warning("WeComCallback: aiohttp/httpx not installed")
-                return None
-            return WecomCallbackAdapter(config)
-
-        elif platform == Platform.WECOM:
-            from gateway.platforms.wecom import WeComAdapter, check_wecom_requirements
-            if not check_wecom_requirements():
-                logger.warning("WeCom: aiohttp not installed or WECOM_BOT_ID/SECRET not set")
-                return None
-            return WeComAdapter(config)
-
-        elif platform == Platform.WEIXIN:
-            from gateway.platforms.weixin import WeixinAdapter, check_weixin_requirements
-            if not check_weixin_requirements():
-                logger.warning("Weixin: aiohttp/cryptography not installed")
-                return None
-            return WeixinAdapter(config)
-
-        elif platform == Platform.MATTERMOST:
-            from gateway.platforms.mattermost import MattermostAdapter, check_mattermost_requirements
-            if not check_mattermost_requirements():
-                logger.warning("Mattermost: MATTERMOST_TOKEN or MATTERMOST_URL not set, or aiohttp missing")
-                return None
-            return MattermostAdapter(config)
-
-        elif platform == Platform.MATRIX:
-            from gateway.platforms.matrix import MatrixAdapter, check_matrix_requirements
-            if not check_matrix_requirements():
-                logger.warning("Matrix: mautrix not installed or credentials not set. Run: pip install 'mautrix[encryption]'")
-                return None
-            return MatrixAdapter(config)
-
-        elif platform == Platform.API_SERVER:
-            from gateway.platforms.api_server import APIServerAdapter, check_api_server_requirements
-            if not check_api_server_requirements():
-                logger.warning("API Server: aiohttp not installed")
-                return None
-            return APIServerAdapter(config)
-
-        elif platform == Platform.WEBHOOK:
-            from gateway.platforms.webhook import WebhookAdapter, check_webhook_requirements
-            if not check_webhook_requirements():
-                logger.warning("Webhook: aiohttp not installed")
-                return None
-            adapter = WebhookAdapter(config)
-            adapter.gateway_runner = self  # For cross-platform delivery
-            return adapter
+        logger.warning("Platform %s is not enabled", platform)
+        return None
 
         elif platform == Platform.BLUEBUBBLES:
             from gateway.platforms.bluebubbles import BlueBubblesAdapter, check_bluebubbles_requirements
@@ -2825,6 +2858,7 @@ class GatewayRunner:
             Platform.DISCORD: "DISCORD_ALLOWED_USERS",
             Platform.WHATSAPP: "WHATSAPP_ALLOWED_USERS",
             Platform.SLACK: "SLACK_ALLOWED_USERS",
+            Platform.SLACK_WEBHOOK: "SLACK_WEBHOOK_ALLOWED_USERS",
             Platform.SIGNAL: "SIGNAL_ALLOWED_USERS",
             Platform.EMAIL: "EMAIL_ALLOWED_USERS",
             Platform.SMS: "SMS_ALLOWED_USERS",
@@ -2846,6 +2880,7 @@ class GatewayRunner:
             Platform.DISCORD: "DISCORD_ALLOW_ALL_USERS",
             Platform.WHATSAPP: "WHATSAPP_ALLOW_ALL_USERS",
             Platform.SLACK: "SLACK_ALLOW_ALL_USERS",
+            Platform.SLACK_WEBHOOK: "SLACK_WEBHOOK_ALLOW_ALL_USERS",
             Platform.SIGNAL: "SIGNAL_ALLOW_ALL_USERS",
             Platform.EMAIL: "EMAIL_ALLOW_ALL_USERS",
             Platform.SMS: "SMS_ALLOW_ALL_USERS",
@@ -7438,7 +7473,7 @@ class GatewayRunner:
     # Platforms where /update is allowed.  ACP, API server, and webhooks are
     # programmatic interfaces that should not trigger system updates.
     _UPDATE_ALLOWED_PLATFORMS = frozenset({
-        Platform.TELEGRAM, Platform.DISCORD, Platform.SLACK, Platform.WHATSAPP,
+        Platform.TELEGRAM, Platform.DISCORD, Platform.SLACK, Platform.SLACK_WEBHOOK, Platform.WHATSAPP,
         Platform.SIGNAL, Platform.MATTERMOST, Platform.MATRIX,
         Platform.HOMEASSISTANT, Platform.EMAIL, Platform.SMS, Platform.DINGTALK,
         Platform.FEISHU, Platform.WECOM, Platform.WECOM_CALLBACK, Platform.WEIXIN, Platform.BLUEBUBBLES, Platform.QQBOT, Platform.LOCAL,
@@ -9148,7 +9183,7 @@ class GatewayRunner:
         # - Telegram uses message_thread_id only for forum topics; passing a
         #   normal DM/group message id as thread_id causes send failures
         # - Other platforms should use explicit source.thread_id only
-        if source.platform == Platform.SLACK:
+        if source.platform in (Platform.SLACK, Platform.SLACK_WEBHOOK):
             _progress_thread_id = source.thread_id or event_message_id
         else:
             _progress_thread_id = source.thread_id
