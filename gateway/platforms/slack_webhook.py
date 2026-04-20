@@ -121,6 +121,11 @@ class SlackWebhookAdapter(BasePlatformAdapter):
         self._signing_secret = os.getenv("SLACK_SIGNING_SECRET")
         self._bot_token = os.getenv("SLACK_BOT_TOKEN")
         self._channel_id = os.getenv("CHANNEL_ID")
+        self._allowed_users: set = set()
+
+        allowed_users_env = os.getenv("SLACK_ALLOWED_USERS")
+        if allowed_users_env:
+            self._allowed_users = {u.strip() for u in allowed_users_env.split(",") if u.strip()}
 
         if not self._signing_secret:
             logger.error("[SlackWebhook] SLACK_SIGNING_SECRET not set")
@@ -500,6 +505,11 @@ class SlackWebhookAdapter(BasePlatformAdapter):
         if event.get("bot_id"):
             return
         if user_id == self._bot_user_id:
+            return
+
+        # Skip messages from users not in the allowed list
+        if self._allowed_users and user_id not in self._allowed_users:
+            logger.debug("[SlackWebhook] Ignoring message from non-allowed user: %s", user_id)
             return
 
         # Skip message edits/deletes
