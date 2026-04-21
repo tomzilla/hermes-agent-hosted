@@ -58,6 +58,22 @@ if [ ! -f "$HERMES_HOME/config.yaml" ]; then
     cp "$INSTALL_DIR/cli-config.yaml.example" "$HERMES_HOME/config.yaml"
 fi
 
+# Inject API key into custom_providers config at startup (from env var)
+API_KEY="${DASHSCOPE_API_KEY:-${ANTHROPIC_API_KEY:-}}"
+if [ -n "$API_KEY" ]; then
+    python3 -c "
+import re, sys
+path = '$HERMES_HOME/config.yaml'
+with open(path) as f:
+    text = f.read()
+# Replace empty api_key in custom_providers section
+text = re.sub(r'(custom_providers:.*?api_key:\s*)\"\"', r'\1\"$API_KEY\"', text, flags=re.DOTALL)
+with open(path, 'w') as f:
+    f.write(text)
+print('Injected API key into config.yaml')
+"
+fi
+
 # SOUL.md
 if [ ! -f "$HERMES_HOME/SOUL.md" ]; then
     cp "$INSTALL_DIR/docker/SOUL.md" "$HERMES_HOME/SOUL.md"

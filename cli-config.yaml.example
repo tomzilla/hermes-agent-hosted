@@ -48,6 +48,12 @@ model:
   # API mode for custom provider: "chat_completions" (OpenAI-compatible) or "anthropic"
   api_mode: "chat_completions"
 
+# Custom provider definitions (credential pool reads api_key from here)
+custom_providers:
+  - name: "dashscope"
+    base_url: "https://coding-intl.dashscope.aliyuncs.com/v1"
+    api_key: ""  # Populated from DASHSCOPE_API_KEY or ANTHROPIC_API_KEY env at startup
+
   # ── Token limits — two settings, easy to confuse ──────────────────────────
   #
   # context_length: TOTAL context window (input + output tokens combined).
