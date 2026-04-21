@@ -888,20 +888,29 @@ def _apply_env_overrides(config: GatewayConfig) -> None:
             config.platforms[Platform.WHATSAPP] = PlatformConfig()
         config.platforms[Platform.WHATSAPP].enabled = True
     
-    # Slack
-    slack_token = os.getenv("SLACK_BOT_TOKEN")
-    if slack_token:
-        if Platform.SLACK not in config.platforms:
-            config.platforms[Platform.SLACK] = PlatformConfig()
-        config.platforms[Platform.SLACK].enabled = True
-        config.platforms[Platform.SLACK].token = slack_token
-    slack_home = os.getenv("SLACK_HOME_CHANNEL")
-    if slack_home and Platform.SLACK in config.platforms:
-        config.platforms[Platform.SLACK].home_channel = HomeChannel(
-            platform=Platform.SLACK,
-            chat_id=slack_home,
-            name=os.getenv("SLACK_HOME_CHANNEL_NAME", ""),
-        )
+    # Slack (Socket Mode) — only when webhook mode is NOT enabled
+    slack_webhook_enabled = os.getenv("SLACK_WEBHOOK_ENABLED", "").lower() in ("true", "1", "yes")
+    if not slack_webhook_enabled:
+        slack_token = os.getenv("SLACK_BOT_TOKEN")
+        if slack_token:
+            if Platform.SLACK not in config.platforms:
+                config.platforms[Platform.SLACK] = PlatformConfig()
+            config.platforms[Platform.SLACK].enabled = True
+            config.platforms[Platform.SLACK].token = slack_token
+        slack_home = os.getenv("SLACK_HOME_CHANNEL")
+        if slack_home and Platform.SLACK in config.platforms:
+            config.platforms[Platform.SLACK].home_channel = HomeChannel(
+                platform=Platform.SLACK,
+                chat_id=slack_home,
+                name=os.getenv("SLACK_HOME_CHANNEL_NAME", ""),
+            )
+
+    # Slack Webhook (HTTP Events API)
+    if slack_webhook_enabled:
+        if Platform.SLACK_WEBHOOK not in config.platforms:
+            config.platforms[Platform.SLACK_WEBHOOK] = PlatformConfig()
+        config.platforms[Platform.SLACK_WEBHOOK].enabled = True
+        config.platforms[Platform.SLACK_WEBHOOK].token = os.getenv("SLACK_BOT_TOKEN", "")
     
     # Signal
     signal_url = os.getenv("SIGNAL_HTTP_URL")

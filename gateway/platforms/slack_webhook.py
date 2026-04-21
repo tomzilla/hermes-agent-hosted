@@ -98,6 +98,18 @@ class SlackWebhookAdapter(BasePlatformAdapter):
     DEFAULT_PORT = 8645
     SIGNATURE_VERSION = "v0"
     MAX_SIGNATURE_AGE = 300  # 5 minutes
+    # Token file path — set by token_manager.py during OAuth refresh
+    TOKEN_FILE_PATH = "/opt/data/slack_token.txt"
+
+    def _get_token(self) -> Optional[str]:
+        """Get current bot token from file (auto-refreshed) or env fallback."""
+        try:
+            token = _Path(self.TOKEN_FILE_PATH).read_text().strip()
+            if token:
+                return token
+        except (FileNotFoundError, OSError):
+            pass
+        return self._bot_token or os.getenv("SLACK_BOT_TOKEN", "")
 
     def __init__(self, config: PlatformConfig):
         super().__init__(config, Platform.SLACK)
@@ -119,7 +131,7 @@ class SlackWebhookAdapter(BasePlatformAdapter):
             return False
 
         self._signing_secret = os.getenv("SLACK_SIGNING_SECRET")
-        self._bot_token = os.getenv("SLACK_BOT_TOKEN")
+        self._bot_token = os.getenv("SLACK_BOT_TOKEN")  # fallback, updated by token manager
         self._channel_id = os.getenv("CHANNEL_ID")
         self._allowed_users: set = set()
 
@@ -131,18 +143,22 @@ class SlackWebhookAdapter(BasePlatformAdapter):
             logger.error("[SlackWebhook] SLACK_SIGNING_SECRET not set")
             return False
         if not self._bot_token:
-            logger.error("[SlackWebhook] SLACK_BOT_TOKEN not set")
+            logger.error("[SlackWebhook] SLACK_BOT_TOKEN not set (and no token file found)")
             return False
         if not self._channel_id:
             logger.error("[SlackWebhook] CHANNEL_ID not set")
             return False
 
         # Get bot user ID for mention filtering
+        initial_token = self._get_token()
+        if not initial_token:
+            logger.error("[SlackWebhook] No valid bot token available")
+            return False
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
                     "https://slack.com/api/auth.test",
-                    headers={"Authorization": f"Bearer {self._bot_token}"},
+                    headers={"Authorization": f"Bearer {initial_token}"},
                 )
                 result = response.json()
                 if result.get("ok"):
@@ -158,11 +174,11 @@ class SlackWebhookAdapter(BasePlatformAdapter):
             logger.error("[SlackWebhook] Failed to authenticate: %s", e)
             return False
 
-        # Create HTTP client with bot token
+        # Create HTTP client — token injected per-request via _get_token()
+        # so auto-refreshed tokens are picked up without restart
         self._http_client = httpx.AsyncClient(
             timeout=30.0,
             follow_redirects=True,
-            headers={"Authorization": f"Bearer {self._bot_token}"},
         )
 
         # Setup aiohttp web server
@@ -190,6 +206,11 @@ class SlackWebhookAdapter(BasePlatformAdapter):
             self._http_client = None
         self._running = False
         logger.info("[SlackWebhook] Disconnected")
+
+    def _slack_headers(self) -> Dict[str, str]:
+        """Build headers for Slack API calls with current (possibly refreshed) token."""
+        token = self._get_token()
+        return {"Authorization": f"Bearer {token}"}
 
     async def send(
         self,
@@ -222,6 +243,7 @@ class SlackWebhookAdapter(BasePlatformAdapter):
             response = await self._http_client.post(
                 "https://slack.com/api/chat.postMessage",
                 json=payload,
+                headers=self._slack_headers(),
             )
             result = response.json()
 
@@ -338,6 +360,7 @@ class SlackWebhookAdapter(BasePlatformAdapter):
             response = await self._http_client.post(
                 "https://slack.com/api/files.getUploadURLExternal",
                 json=upload_payload,
+                headers=self._slack_headers(),
             )
             result = response.json()
 
@@ -350,7 +373,7 @@ class SlackWebhookAdapter(BasePlatformAdapter):
             upload_url = result.get("upload_url")
             file_id = result.get("file_id")
 
-            # Step 2: Upload the file content
+            # Step 2: Upload the file content (presigned URL — no auth header needed)
             upload_response = await self._http_client.post(
                 upload_url,
                 headers={"Content-Type": "application/octet-stream"},
@@ -368,6 +391,7 @@ class SlackWebhookAdapter(BasePlatformAdapter):
             complete_response = await self._http_client.post(
                 "https://slack.com/api/files.completeUploadExternal",
                 json=complete_payload,
+                headers=self._slack_headers(),
             )
             complete_result = complete_response.json()
 
@@ -405,6 +429,7 @@ class SlackWebhookAdapter(BasePlatformAdapter):
             response = await self._http_client.post(
                 "https://slack.com/api/conversations.info",
                 json={"channel": self._channel_id},
+                headers=self._slack_headers(),
             )
             result = response.json()
             if result.get("ok"):
@@ -628,6 +653,7 @@ class SlackWebhookAdapter(BasePlatformAdapter):
             response = await self._http_client.post(
                 "https://slack.com/api/users.info",
                 json={"user": user_id},
+                headers=self._slack_headers(),
             )
             result = response.json()
             if result.get("ok"):
@@ -671,6 +697,7 @@ class SlackWebhookAdapter(BasePlatformAdapter):
                     "limit": limit + 1,
                     "inclusive": True,
                 },
+                headers=self._slack_headers(),
             )
             result = response.json()
 

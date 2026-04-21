@@ -68,4 +68,21 @@ if [ -d "$INSTALL_DIR/skills" ]; then
     python3 "$INSTALL_DIR/tools/skills_sync.py"
 fi
 
+# Write Slack bot token to file for webhook adapter
+if [ -n "$SLACK_BOT_TOKEN" ]; then
+    echo "Writing Slack bot token to file..."
+    python3 "$INSTALL_DIR/docker/token_manager.py"
+fi
+
+# Register this task in DynamoDB (only if running in ECS)
+python3 "$INSTALL_DIR/docker/register_task.py" register
+
+# Trap SIGTERM/SIGINT for clean deregistration on shutdown
+cleanup() {
+    echo "Shutting down — deregistering from task registry..."
+    python3 "$INSTALL_DIR/docker/register_task.py" unregister 2>/dev/null || true
+    exit 0
+}
+trap cleanup SIGTERM SIGINT INT TERM
+
 exec hermes "$@"

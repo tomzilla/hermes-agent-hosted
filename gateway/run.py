@@ -2657,7 +2657,15 @@ class GatewayRunner:
                 getattr(self.config, "thread_sessions_per_user", False),
             )
 
-        # Slack Webhook is the only enabled platform
+        # Slack (Socket Mode)
+        if platform == Platform.SLACK:
+            from gateway.platforms.slack import SlackAdapter, check_slack_requirements
+            if not check_slack_requirements():
+                logger.warning("Slack: slack-bolt not installed. Run: pip install 'hermes-agent[slack]'")
+                return None
+            return SlackAdapter(config)
+
+        # Slack Webhook
         if platform == Platform.SLACK_WEBHOOK:
             from gateway.platforms.slack_webhook import SlackWebhookAdapter, check_slack_webhook_requirements
             if not check_slack_webhook_requirements():
@@ -2812,22 +2820,6 @@ class GatewayRunner:
         #     return QQAdapter(config)
 
         logger.warning("Platform %s is not enabled", platform)
-        return None
-
-        elif platform == Platform.BLUEBUBBLES:
-            from gateway.platforms.bluebubbles import BlueBubblesAdapter, check_bluebubbles_requirements
-            if not check_bluebubbles_requirements():
-                logger.warning("BlueBubbles: aiohttp/httpx missing or BLUEBUBBLES_SERVER_URL/BLUEBUBBLES_PASSWORD not configured")
-                return None
-            return BlueBubblesAdapter(config)
-
-        elif platform == Platform.QQBOT:
-            from gateway.platforms.qqbot import QQAdapter, check_qq_requirements
-            if not check_qq_requirements():
-                logger.warning("QQBot: aiohttp/httpx missing or QQ_APP_ID/QQ_CLIENT_SECRET not configured")
-                return None
-            return QQAdapter(config)
-
         return None
 
     def _is_user_authorized(self, source: SessionSource) -> bool:
