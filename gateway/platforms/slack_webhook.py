@@ -220,12 +220,15 @@ class SlackWebhookAdapter(BasePlatformAdapter):
         metadata: Optional[Dict[str, Any]] = None,
     ) -> SendResult:
         """Send a message to the configured Slack channel."""
+        logger.info("[SlackWebhook] DEBUG send() called: chat_id=%s, content_len=%d, _channel_id=%s", chat_id, len(content), self._channel_id)
         if not self._http_client:
+            logger.error("[SlackWebhook] DEBUG send() - no http_client!")
             return SendResult(success=False, error="Not connected")
 
         try:
             # Convert markdown to Slack mrkdwn
             formatted = self.format_message(content)
+            logger.info("[SlackWebhook] DEBUG send() - formatted_len=%d", len(formatted))
 
             # Build API payload
             payload = {
@@ -233,19 +236,24 @@ class SlackWebhookAdapter(BasePlatformAdapter):
                 "text": formatted,
                 "mrkdwn": True,
             }
+            logger.info("[SlackWebhook] DEBUG send() - payload_channel=%s", payload["channel"])
 
             # Thread support
             thread_ts = self._resolve_thread_ts(reply_to, metadata)
             if thread_ts:
                 payload["thread_ts"] = thread_ts
+                logger.info("[SlackWebhook] DEBUG send() - thread_ts=%s", thread_ts)
 
             # Send message
+            logger.info("[SlackWebhook] DEBUG send() - about to POST to Slack")
             response = await self._http_client.post(
                 "https://slack.com/api/chat.postMessage",
                 json=payload,
                 headers=self._slack_headers(),
             )
+            logger.info("[SlackWebhook] DEBUG send() - POST completed, status=%d", response.status_code)
             result = response.json()
+            logger.info("[SlackWebhook] DEBUG send() - result ok=%s, ts=%s, error=%s", result.get("ok"), result.get("ts"), result.get("error"))
 
             if not result.get("ok"):
                 return SendResult(
