@@ -134,10 +134,19 @@ class SlackWebhookAdapter(BasePlatformAdapter):
         self._bot_token = os.getenv("SLACK_BOT_TOKEN")  # fallback, updated by token manager
         self._channel_id = os.getenv("CHANNEL_ID")
         self._allowed_users: set = set()
+        self._webhook_secret: str = ""
 
         allowed_users_env = os.getenv("SLACK_ALLOWED_USERS")
         if allowed_users_env:
             self._allowed_users = {u.strip() for u in allowed_users_env.split(",") if u.strip()}
+
+        # Load webhook secret from file (written by register_task.py)
+        secret_path = "/opt/data/hermes_webhook_secret.txt"
+        try:
+            self._webhook_secret = _Path(secret_path).read_text().strip()
+            logger.info("[SlackWebhook] Loaded webhook secret from %s", secret_path)
+        except (FileNotFoundError, OSError) as e:
+            logger.info("[SlackWebhook] No webhook secret file at %s: %s", secret_path, e)
 
         if not self._signing_secret:
             logger.error("[SlackWebhook] SLACK_SIGNING_SECRET not set")
@@ -473,6 +482,13 @@ class SlackWebhookAdapter(BasePlatformAdapter):
             logger.warning("[SlackWebhook] Invalid signature")
             return web.json_response({"error": "Invalid signature"}, status=401)
 
+        # Verify webhook secret (from internal router)
+        if self._webhook_secret:
+            sent_secret = request.headers.get("X-Webhook-Secret", "")
+            if not sent_secret or not hmac.compare_digest(self._webhook_secret, sent_secret):
+                logger.warning("[SlackWebhook] Invalid webhook secret")
+                return web.json_response({"error": "Invalid webhook secret"}, status=401)
+
         # Parse event
         try:
             payload = json.loads(body)
@@ -506,6 +522,11 @@ class SlackWebhookAdapter(BasePlatformAdapter):
         """Verify Slack request signature."""
         timestamp = request.headers.get("X-Slack-Request-Timestamp", "")
         signature = request.headers.get("X-Slack-Signature", "")
+
+        # Skip verification for internal requests (no Slack signature headers)
+        # This allows the Lambda router to forward messages without Slack signature
+        if not timestamp and not signature:
+            return True
 
         if not timestamp or not signature:
             return False
