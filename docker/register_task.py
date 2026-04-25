@@ -33,6 +33,7 @@ USER_ID = os.getenv("USER_ID", "").strip()
 ORG_ID = os.getenv("ORG_ID", "").strip()
 TASK_IP = os.getenv("TASK_IP", "").strip()
 TASK_PORT = os.getenv("TASK_PORT", "8645")
+CHANNEL_ID = os.getenv("CHANNEL_ID", "").strip()
 LAMBDA_FUNCTION = os.getenv("LAMBDA_REGISTER_FUNCTION", "hermes-register")
 WEBHOOK_PATH = "/webhooks/slack"
 
@@ -43,7 +44,24 @@ def is_ecs():
 
 
 def get_task_ip():
-    """Get the container's primary private IP."""
+    """Get the container's primary private IP.
+    For ECS EC2 bridge mode: tries EC2 metadata first (gives EC2 host IP),
+    then falls back to Docker hostname resolution.
+    """
+    # Try EC2 instance metadata first - this gives the EC2 host's private IP
+    # which is reachable from Lambda in the VPC
+    try:
+        import urllib.request
+        req = urllib.request.Request("http://169.254.169.254/latest/meta-data/local-ipv4")
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            ec2_ip = resp.read().decode("utf-8")
+            if ec2_ip and not ec2_ip.startswith("127."):
+                print(f"[register] Using EC2 instance IP from metadata: {ec2_ip}")
+                return ec2_ip
+    except Exception as e:
+        print(f"[register] EC2 metadata lookup failed ({e}), falling back to hostname resolution")
+
+    # Fall back to Docker bridge IP
     hostname = socket.gethostname()
     try:
         return socket.gethostbyname(hostname)
@@ -55,12 +73,39 @@ def get_task_ip():
         return "0.0.0.0"
 
 
+def get_task_metadata():
+    """Get task ARN and other task metadata from ECS metadata endpoint.
+    The ECS agent provides container-level metadata at a link-local address.
+    """
+    # Try ECS container metadata endpoint (v4)
+    ecs_meta_uri = os.getenv("ECS_CONTAINER_METADATA_URI_V4") or os.getenv("ECS_CONTAINER_METADATA_URI")
+    if not ecs_meta_uri:
+        return {}
+
+    try:
+        import urllib.request
+        req = urllib.request.Request(f"{ecs_meta_uri}/task")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            task_meta = json.loads(resp.read().decode("utf-8"))
+            # Extract task ARN from the metadata
+            task_arn = task_meta.get("TaskARN") or task_meta.get("taskArn")
+            cluster = task_meta.get("Cluster")
+            print(f"[register] ECS task metadata: ARN={task_arn}, Cluster={cluster}")
+            return {"task_arn": task_arn, "cluster": cluster}
+    except Exception as e:
+        print(f"[register] ECS metadata lookup failed ({e})")
+    return {}
+
+
 def get_lambda_client():
     return boto3.client("lambda", region_name=REGION)
 
 
 def register():
     ip = TASK_IP or get_task_ip()
+    task_meta = get_task_metadata()
+    task_arn = task_meta.get("task_arn")
+
     webhook_url = f"http://{ip}:{TASK_PORT}{WEBHOOK_PATH}"
 
     payload = {
@@ -68,9 +113,11 @@ def register():
         "tenant_id": TENANT_ID,
         "user_id": USER_ID,
         "org_id": ORG_ID,
+        "channel_id": CHANNEL_ID,
         "hermes_webhook_url": webhook_url,
         "task_ip": ip,
         "task_port": int(TASK_PORT),
+        "task_arn": task_arn,
     }
 
     try:
