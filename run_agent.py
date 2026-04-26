@@ -1060,6 +1060,10 @@ class AIAgent:
                 if self.provider == "copilot-acp":
                     client_kwargs["command"] = self.acp_command
                     client_kwargs["args"] = self.acp_args
+                if self.provider == "claude":
+                    client_kwargs["acp_command"] = self.acp_command
+                    client_kwargs["acp_args"] = self.acp_args
+                    client_kwargs["acp_cwd"] = os.getcwd()
                 effective_base = base_url
                 if "openrouter" in effective_base.lower():
                     client_kwargs["default_headers"] = {
@@ -4748,6 +4752,17 @@ class AIAgent:
             client = CopilotACPClient(**client_kwargs)
             logger.info(
                 "Copilot ACP client created (%s, shared=%s) %s",
+                reason,
+                shared,
+                self._client_log_context(),
+            )
+            return client
+        if self.provider == "claude" or str(client_kwargs.get("base_url", "")).startswith("tmux://"):
+            from agent.claude_tmux_client import ClaudeTmuxClient
+
+            client = ClaudeTmuxClient(**client_kwargs)
+            logger.info(
+                "Claude tmux client created (%s, shared=%s) %s",
                 reason,
                 shared,
                 self._client_log_context(),
